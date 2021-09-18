@@ -2,19 +2,18 @@ package commands
 
 import (
 	"fmt"
-	"github.com/mgutz/ansi"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"runtime"
+	"sort"
+	"strings"
+
 	"github.com/trntv/sshed/host"
 	"github.com/trntv/sshed/keychain"
 	"github.com/trntv/sshed/ssh"
 	"github.com/urfave/cli"
 	"gopkg.in/AlecAivazis/survey.v1"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"os/user"
-	"runtime"
-	"sort"
-	"strings"
 )
 
 type Commands struct {
@@ -134,16 +133,6 @@ func (cmds *Commands) askServersKeys() ([]string, error) {
 }
 
 func (cmds *Commands) createCommand(c *cli.Context, srv *host.Host, options *options, command string) (cmd *exec.Cmd, err error) {
-	var username string
-	if srv.User == "" {
-		u, err := user.Current()
-		if err != nil {
-			return nil, err
-		}
-		username = u.Username
-	} else {
-		username = srv.User
-	}
 
 	var args = make([]string, 0)
 	if srv.Password() != "" {
@@ -178,30 +167,9 @@ func (cmds *Commands) createCommand(c *cli.Context, srv *host.Host, options *opt
 		srv.IdentityFile = tf.Name()
 	}
 
-	if srv.User != "" {
-		args = append(args, fmt.Sprintf("%s@%s", username, srv.Hostname))
-	} else {
-		args = append(args, fmt.Sprintf("%s", srv.Hostname))
-	}
-
-	if srv.Port != "" {
-		args = append(args, fmt.Sprintf("-p %s", srv.Port))
-	}
-
-	if srv.IdentityFile != "" {
-		args = append(args, fmt.Sprintf("-i %s", srv.IdentityFile))
-	}
-
-	if options.verbose == true {
-		args = append(args, "-v")
-	}
-
+	args = append(args, srv.Key)
 	if command != "" {
 		args = append(args, command)
-	}
-
-	if options.verbose == true {
-		fmt.Printf("%s: %s\r\n", ansi.Color("Executing", "green"), strings.Join(args, " "))
 	}
 
 	if runtime.GOOS == "windows" {
